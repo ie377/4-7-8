@@ -46,6 +46,18 @@ const END_CUES = {
   exhale: [{ from: 220, to: 220, duration: 0.16, level: 0.5 }]
 };
 
+const STATS_KEY = "breath-stats-v1";
+const VISIT_KEY = "breath-visit-seen";
+
+const ACHIEVEMENTS = [
+  { id: "first", title: "Первый вдох", description: "Завершите первую сессию", test: (s) => s.sessions >= 1 },
+  { id: "cycles10", title: "10 циклов", description: "Пройдите 10 дыхательных циклов", test: (s) => s.cycles >= 10 },
+  { id: "time5", title: "5 минут с собой", description: "Проведите 5 минут на сайте", test: (s) => s.totalMs >= 300000 },
+  { id: "streak7", title: "Неделя подряд", description: "Заходите 7 дней подряд", test: (s) => s.streak >= 7 },
+  { id: "time15", title: "15 минут", description: "Проведите 15 минут на сайте", test: (s) => s.totalMs >= 900000 },
+  { id: "cycles100", title: "100 циклов", description: "Пройдите 100 циклов", test: (s) => s.cycles >= 100 }
+];
+
 const el = {
   orb: document.getElementById("orb"),
   phaseLabel: document.getElementById("phaseLabel"),
@@ -66,6 +78,12 @@ const el = {
   infiniteToggle: document.getElementById("infiniteToggle"),
   soundToggle: document.getElementById("soundToggle"),
   volumeRange: document.getElementById("volumeRange"),
+  statVisits: document.getElementById("statVisits"),
+  statTime: document.getElementById("statTime"),
+  statSessions: document.getElementById("statSessions"),
+  statCycles: document.getElementById("statCycles"),
+  streakLabel: document.getElementById("streakLabel"),
+  badges: document.getElementById("badges"),
   announcer: document.getElementById("announcer")
 };
 
@@ -86,6 +104,8 @@ const state = {
 };
 
 let audioCtx = null;
+let stats = createDefaultStats();
+let activeSince = null;
 
 function safeGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -93,6 +113,143 @@ function safeGet(key) {
 
 function safeSet(key, value) {
   try { localStorage.setItem(key, value); } catch {}
+}
+
+function safeSessionGet(key) {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+}
+
+function safeSessionSet(key, value) {
+  try { sessionStorage.setItem(key, value); } catch {}
+}
+
+function createDefaultStats() {
+  return {
+    visits: 0,
+    totalMs: 0,
+    sessions: 0,
+    cycles: 0,
+    streak: 0,
+    bestStreak: 0,
+    lastVisit: "",
+    achievements: []
+  };
+}
+
+function loadStats() {
+  const raw = safeGet(STATS_KEY);
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    const fresh = createDefaultStats();
+    Object.keys(fresh).forEach((key) => {
+      if (key === "achievements") {
+        if (Array.isArray(parsed[key])) fresh[key] = parsed[key].filter((id) => ACHIEVEMENTS.some((a) => a.id === id));
+      } else if (key === "lastVisit") {
+        if (typeof parsed[key] === "string") fresh[key] = parsed[key];
+      } else if (Number.isFinite(parsed[key]) && parsed[key] >= 0) {
+        fresh[key] = parsed[key];
+      }
+    });
+    stats = fresh;
+  } catch {}
+}
+
+function saveStats() {
+  safeSet(STATS_KEY, JSON.stringify(stats));
+}
+
+function dayKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function trackVisit() {
+  if (safeSessionGet(VISIT_KEY) === null) {
+    stats.visits += 1;
+    safeSessionSet(VISIT_KEY, "1");
+  }
+  const today = dayKey(new Date());
+  if (stats.lastVisit !== today) {
+    const yesterday = dayKey(new Date(Date.now() - 86400000));
+    stats.streak = stats.lastVisit === yesterday ? stats.streak + 1 : 1;
+    stats.lastVisit = today;
+    stats.bestStreak = Math.max(stats.bestStreak, stats.streak);
+  }
+  checkAchievements();
+  saveStats();
+  renderStats();
+}
+
+function formatTotalTime(ms) {
+  const total = Math.floor(ms / 1000);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const mmss = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return hours ? `${hours}:${mmss}` : mmss;
+}
+
+function renderStats() {
+  el.statVisits.textContent = String(stats.visits);
+  el.statTime.textContent = formatTotalTime(stats.totalMs);
+  el.statSessions.textContent = String(stats.sessions);
+  el.statCycles.textContent = String(stats.cycles);
+  el.streakLabel.textContent = `${stats.streak} ${pluralDays(stats.streak)} подряд`;
+  el.badges.innerHTML = ACHIEVEMENTS.map((achievement) => {
+    const unlocked = stats.achievements.includes(achievement.id);
+    return `<span class="badge ${unlocked ? "is-unlocked" : "is-locked"}" data-id="${achievement.id}" title="${achievement.title}: ${achievement.description}" aria-label="${achievement.title}: ${achievement.description}"></span>`;
+  }).join("");
+}
+
+function pluralDays(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "дня";
+  return "дней";
+}
+
+function checkAchievements() {
+  const unlocked = [];
+  ACHIEVEMENTS.forEach((achievement) => {
+    if (!stats.achievements.includes(achievement.id) && achievement.test(stats)) {
+      stats.achievements.push(achievement.id);
+      unlocked.push(achievement);
+    }
+  });
+  if (!unlocked.length) return false;
+  renderStats();
+  unlocked.forEach((achievement) => {
+    const badge = el.badges.querySelector(`[data-id="${achievement.id}"]`);
+    if (badge) badge.classList.add("is-new");
+  });
+  el.announcer.textContent = `Новое достижение: ${unlocked[0].title}`;
+  return true;
+}
+
+function startActiveTimer() {
+  if (activeSince === null && !document.hidden) activeSince = performance.now();
+}
+
+function stopActiveTimer() {
+  if (activeSince === null) return;
+  const now = performance.now();
+  stats.totalMs += Math.max(0, now - activeSince);
+  activeSince = now;
+  checkAchievements();
+  saveStats();
+  renderStats();
+  activeSince = null;
+}
+
+function flushActiveTime() {
+  if (activeSince === null) return;
+  const now = performance.now();
+  stats.totalMs += Math.max(0, now - activeSince);
+  activeSince = now;
 }
 
 function loadSettings() {
@@ -285,25 +442,34 @@ function finishSession() {
   state.phaseIndex = 0;
   stopLoop();
   playFinish();
+  stats.sessions += 1;
+  saveStats();
+  const gotAchievement = checkAchievements();
+  renderStats();
   renderDynamic();
   renderButton();
-  el.announcer.textContent = "Сессия завершена";
+  if (!gotAchievement) el.announcer.textContent = "Сессия завершена";
 }
 
 function advancePhase() {
   const phases = currentPhases();
   playCue(currentPhase(), "end");
   state.phaseIndex += 1;
+  let gotAchievement = false;
   if (state.phaseIndex >= phases.length) {
     state.phaseIndex = 0;
     state.completedCycles += 1;
+    stats.cycles += 1;
+    saveStats();
+    gotAchievement = checkAchievements();
+    renderStats();
   }
   if (!state.infinite && state.completedCycles >= state.cyclesTarget) {
     finishSession();
     return;
   }
   playCue(currentPhase(), "start", 0.2);
-  announcePhase(false);
+  if (!gotAchievement) announcePhase(false);
 }
 
 function tick(timestamp) {
@@ -415,7 +581,27 @@ document.addEventListener("keydown", (event) => {
   toggleSession();
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopActiveTimer();
+  else startActiveTimer();
+});
+
+window.addEventListener("pagehide", () => {
+  stopActiveTimer();
+  saveStats();
+});
+
+setInterval(() => {
+  flushActiveTime();
+  checkAchievements();
+  saveStats();
+  renderStats();
+}, 15000);
+
 loadSettings();
+loadStats();
+trackVisit();
+startActiveTimer();
 buildPhaseList();
 renderSettings();
 renderDynamic();
