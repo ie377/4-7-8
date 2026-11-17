@@ -1,37 +1,160 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
   <head>
-    	  <!-- Yandex.Metrika counter -->
-<script type="text/javascript">
-    (function(m,e,t,r,i,k,a){
-        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-        m[i].l=1*new Date();
-        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105289530', 'ym');
-
-    ym(105289530, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
-</script>
-<noscript><div><img src="https://mc.yandex.ru/watch/105289530" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-<!-- /Yandex.Metrika counter -->
     <meta charset="UTF-8" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌬️</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Дыхательное упражнение 4-7-8 для расслабления, снижения тревоги и улучшения сна" />
-    <meta name="theme-color" content="#0f0f1a" />
-    <title>4-7-8 | Дыхательное упражнение</title>
-    <script type="module" crossorigin src="/assets/index-CAZdi-lG.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BNtNmT62.css">
+    <meta name="description" content="Дыхательная практика 4-7-8 и box breathing с визуальным и звуковым индикатором. Работает прямо в браузере." />
+    <meta name="theme-color" content="#0b1020" />
+    <title>4-7-8.ru — дыхание для спокойствия и сна</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌬️</text></svg>" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
   </head>
   <body>
-    <div id="root"></div>
-    </br>
-    <div style="text-align: center;">
-  <a href="https://airzamer.ru" target="_blank" rel="noopener noreferrer">
-    <img src="airzamer_banner.jpg" 
-         alt="Перейти на airzamer.ru" 
-         style="max-width: 100%; width: 500px; height: auto; border-radius: 15px;">
-  </a>
-</div>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="4-7-8.ru — на главную">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <path d="M3 12h3l2-5 3 10 3-13 2 8h5" />
+            </svg>
+          </span>
+          <span class="brand-text">
+            <strong>4-7-8<span class="brand-dot">.ru</span></strong>
+            <small>дыхание для спокойствия</small>
+          </span>
+        </a>
+        <button class="icon-btn" id="themeToggle" type="button" aria-label="Переключить тему" title="Переключить тему">
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8Z" />
+          </svg>
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+          </svg>
+        </button>
+      </header>
+
+      <main>
+        <section class="hero">
+          <h1>Дышите — и отпустите напряжение</h1>
+          <p>Следуйте за кругом и звуком. Вдох — задержка — выдох. Несколько минут такого дыхания помогают успокоиться и подготовиться ко сну.</p>
+        </section>
+
+        <section class="breather-card" aria-label="Индикатор дыхания">
+          <div class="orb-stage">
+            <div class="orb-halo" aria-hidden="true"></div>
+            <div class="orb" id="orb" style="--scale: 0.55; --progress: 0">
+              <div class="orb-ring" aria-hidden="true"></div>
+              <div class="orb-content">
+                <span class="orb-phase" id="phaseLabel">Вдох</span>
+                <span class="orb-count" id="phaseCount">4</span>
+                <span class="orb-hint" id="phaseHint">нажмите «Начать»</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="phases" id="phaseList" aria-label="Этапы дыхания"></div>
+
+          <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div>
+
+          <div class="session-info">
+            <span id="cycleLabel">Цикл 0 из 4</span>
+            <span id="timeLabel">00:00</span>
+          </div>
+
+          <div class="controls">
+            <button class="btn btn-primary" id="startBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12 8 5.2Z" /></svg>
+              <span id="startLabel">Начать</span>
+            </button>
+            <button class="btn btn-secondary" id="resetBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" /></svg>
+              Сбросить
+            </button>
+          </div>
+          <p class="keyboard-tip">Пробел — старт/пауза</p>
+        </section>
+
+        <section class="settings" aria-label="Настройки практики">
+          <div class="settings-block">
+            <h2>Техника дыхания</h2>
+            <div class="techniques" id="techniques">
+              <button class="technique is-active" type="button" data-technique="478" aria-pressed="true">
+                <strong>4-7-8</strong>
+                <span>4 вдоха · 7 задержки · 8 выдоха</span>
+              </button>
+              <button class="technique" type="button" data-technique="box" aria-pressed="false">
+                <strong>Box</strong>
+                <span>4 · 4 · 4 · 4 по квадрату</span>
+              </button>
+              <button class="technique" type="button" data-technique="calm" aria-pressed="false">
+                <strong>Расслабление</strong>
+                <span>4 вдоха · 4 задержки · 6 выдоха</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-block">
+              <h2>Повторы</h2>
+              <div class="setting-line">
+                <div class="stepper" id="stepper">
+                  <button id="cycleMinus" type="button" aria-label="Уменьшить число циклов">−</button>
+                  <span id="cycleValue">4</span>
+                  <button id="cyclePlus" type="button" aria-label="Увеличить число циклов">+</button>
+                </div>
+                <span class="setting-label">циклов за сессию</span>
+              </div>
+              <label class="switch-line" for="infiniteToggle">
+                <span class="switch-text">Бесконечный повтор</span>
+                <span class="switch">
+                  <input type="checkbox" id="infiniteToggle" />
+                  <span class="switch-slider" aria-hidden="true"></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="settings-block">
+              <h2>Звук</h2>
+              <label class="switch-line" for="soundToggle">
+                <span class="switch-text">Звуковые подсказки</span>
+                <span class="switch">
+                  <input type="checkbox" id="soundToggle" checked />
+                  <span class="switch-slider" aria-hidden="true"></span>
+                </span>
+              </label>
+              <label class="volume-line" for="volumeRange">
+                <span>Громкость</span>
+                <input type="range" id="volumeRange" min="0" max="100" value="60" />
+              </label>
+              <p class="sound-note">Начало вдоха — восходящий тон, его конец — высокий короткий сигнал. Задержка — два коротких сигнала, конец задержки — средний сигнал. Начало выдоха — нисходящий тон, его конец — низкий сигнал. Дышите, не глядя на экран.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="howto">
+          <h2>Как дышать</h2>
+          <ol>
+            <li><strong>Вдох</strong> носом, медленно и глубоко, наполняя живот.</li>
+            <li><strong>Задержка</strong> без напряжения, расслабьте плечи.</li>
+            <li><strong>Выдох</strong> носом, плавно и полностью, со звуком «ха-а-а».</li>
+          </ol>
+          <p class="disclaimer">Если появится головокружение или дискомфорт — прервите упражнение и дышите обычным образом.</p>
+        </section>
+
+        <div style="text-align: center; margin-top: 20px;">
+          <a href="https://airzamer.ru" target="_blank" rel="noopener noreferrer">
+            <img src="airzamer_banner.jpg" alt="Перейти на airzamer.ru" style="max-width: 100%; width: 500px; height: auto; border-radius: 15px;">
+          </a>
+        </div>
+      </main>
+
+      <footer>
+        <span>4-7-8.ru</span>
+        <span>Дышите медленно. Остальное подождёт.</span>
+      </footer>
+    </div>
+    <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
   </body>
 </html>
